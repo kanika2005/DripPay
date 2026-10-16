@@ -1,0 +1,146 @@
+package com.example.wallet.service;
+
+import com.example.wallet.dto.AddMoneyRequest;
+import com.example.wallet.dto.CreateWalletRequest;
+import com.example.wallet.dto.WalletResponse;
+import com.example.wallet.dto.WithdrawMoneyRequest;
+import com.example.wallet.entity.Wallet;
+import com.example.wallet.entity.WalletTransaction;
+import com.example.wallet.exception.InvalidWalletOperationException;
+import com.example.wallet.exception.WalletNotFoundException;
+import com.example.wallet.repository.WalletRepository;
+import com.example.wallet.repository.WalletTransactionRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+/**
+ * UNIT TEST for WalletService.
+ *
+ * Unit Test      → test one class in isolation (mock dependencies)
+ * Integration    → test multiple layers together (real DB or Testcontainers)
+ * API Test       → call HTTP endpoints (MockMvc / RestAssured)
+ *
+ * Here we UNIT test the service: real WalletService + mocked repositories.
+ * No Spring context, no MySQL — fast and focused on business rules.
+ */
+@ExtendWith(MockitoExtension.class)
+class WalletServiceTest {
+
+    @Mock
+    private WalletRepository walletRepository;
+
+    @Mock
+    private WalletTransactionRepository walletTransactionRepository;
+
+    @InjectMocks
+    private WalletService walletService;
+
+    private Wallet existingWallet;
+
+    @BeforeEach
+    void setUp() {
+        existingWallet = new Wallet(101L, new BigDecimal("100.0000"));
+        // Simulate DB-assigned id via reflection-free approach: save returns entity with id set in stub
+        setWalletId(existingWallet, 1L);
+    }
+
+    @Test
+    void createWallet_success() {
+        CreateWalletRequest request = new CreateWalletRequest(101L);
+
+        when(walletRepository.findByUserId(101L)).thenReturn(Optional.empty());
+        when(walletRepository.save(any(Wallet.class))).thenAnswer(invocation -> {
+            Wallet w = invocation.getArgument(0);
+            setWalletId(w, 1L);
+            return w;
+        });
+
+        WalletResponse response = walletService.createWallet(request);
+
+        assertEquals(1L, response.getId());
+        assertEquals(101L, response.getUserId());
+        assertEquals(0, response.getBalance().compareTo(BigDecimal.ZERO));
+    }
+
+    @Test
+    void getWallet_success() {
+        when(walletRepository.findById(1L)).thenReturn(Optional.of(existingWallet));
+
+        WalletResponse response = walletService.getWallet(1L);
+
+        assertEquals(1L, response.getId());
+        assertEquals(new BigDecimal("100.0000"), response.getBalance());
+    }
+
+    @Test
+    void getWallet_notFound() {
+        when(walletRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(WalletNotFoundException.class, () -> walletService.getWallet(99L));
+    }
+
+    @Test
+    void addMoney_success() {
+        when(walletRepository.findById(1L)).thenReturn(Optional.of(existingWallet));
+        when(walletTransactionRepository.save(any(WalletTransaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        WalletResponse response = walletService.addMoney(1L, new AddMoneyRequest(new BigDecimal("50")));
+
+        assertEquals(0, response.getBalance().compareTo(new BigDecimal("150.0000")));
+        verify(walletTransactionRepository).save(any(WalletTransaction.class));
+    }
+
+    @Test
+    void withdrawMoney_success() {
+        when(walletRepository.findById(1L)).thenReturn(Optional.of(existingWallet));
+        when(walletTransactionRepository.save(any(WalletTransaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        WalletResponse response = walletService.withdrawMoney(1L, new WithdrawMoneyRequest(new BigDecimal("40")));
+
+        assertEquals(0, response.getBalance().compareTo(new BigDecimal("60.0000")));
+    }
+
+    @Test
+    void withdrawMoney_insufficientBalance() {
+        when(walletRepository.findById(1L)).thenReturn(Optional.of(existingWallet));
+
+        assertThrows(InvalidWalletOperationException.class,
+                () -> walletService.withdrawMoney(1L, new WithdrawMoneyRequest(new BigDecimal("200"))));
+    }
+
+    @Test
+    void addMoney_amountMustBePositive() {
+        assertThrows(InvalidWalletOperationException.class,
+                () -> walletService.addMoney(1L, new AddMoneyRequest(BigDecimal.ZERO)));
+    }
+
+    /**
+     * Helper: Wallet.id has no setter (generated by DB).
+     * For unit tests we set it via a package technique using save stub,
+     * or here with a tiny reflection helper.
+     */
+    private static void setWalletId(Wallet wallet, Long id) {
+        try {
+            var field = Wallet.class.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(wallet, id);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+}

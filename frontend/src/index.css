@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *:focus-visible {
+    outline: 2px solid #dfff68;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl bg-drip-card border border-white/5 shadow-lg;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-drip-lime px-4 py-2.5 font-semibold text-drip-bg transition hover:brightness-110 active:scale-[0.98];
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 font-medium text-white transition hover:bg-white/5;
+  }
+  .input {
+    @apply w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-white placeholder:text-drip-muted focus:border-drip-lime/50;
+  }
+}

@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:drippay;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: false
+
+drippay:
+  jwt:
+    secret: test-secret-key-with-enough-length-32chars
+    expiration-ms: 3600000

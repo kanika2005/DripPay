@@ -1,0 +1,10 @@
+=== DripPay E2E smoke 2026-10-14T18:23:47Z ===
+BASE=http://localhost:18080/api/v1
+register A: HTTP 201
+deposit: HTTP 200
+balance before deposit: 0.0 after: 1000.0
+transfer 1: HTTP 200
+transfer duplicate: HTTP 200
+balance after transfers: 750.0 (expect 750.0000)
+insufficient transfer: HTTP 400 (expect 400)
+=== E2E smoke complete ===

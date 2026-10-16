@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: drippay-backend
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/drippay?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    # Set DB_PASSWORD in the environment. Empty default suits local MySQL with no root password.
+    password: ${DB_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: ${SERVER_PORT:8080}
+
+drippay:
+  jwt:
+    secret: ${JWT_SECRET:change-me-in-production-use-at-least-32-chars-secret-key!!}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  fraud:
+    max-failed-transfers-per-hour: 5
+    high-amount-threshold: 10000
+    rapid-tx-window-minutes: 10
+    rapid-tx-count: 8
+
+springdoc:
+  api-docs:
+    path: /api/v1/docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    com.drippay: INFO
