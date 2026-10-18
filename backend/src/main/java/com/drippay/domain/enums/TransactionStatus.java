@@ -1,7 +1,10 @@
 package com.drippay.domain.enums;
 
 public enum TransactionStatus {
+    INITIATED,
     PENDING,
     COMPLETED,
-    FAILED
+    SUCCESS,
+    FAILED,
+    REVERSED
 }

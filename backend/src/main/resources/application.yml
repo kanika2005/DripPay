@@ -20,10 +20,34 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
 drippay:
   jwt:
     secret: ${JWT_SECRET:change-me-in-production-use-at-least-32-chars-secret-key!!}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+    refresh-expiration-days: 14
+  outbox:
+    poll-ms: 5000
+  webhook:
+    poll-ms: 7000
+  reconciliation:
+    cron: "0 0 2 * * *"
+  rate-limit:
+    login-per-minute: 20
+    transfer-per-minute: 30
+  ai:
+    api-key: ${DRIPPAY_AI_API_KEY:}
+    base-url: ${DRIPPAY_AI_BASE_URL:https://api.openai.com/v1}
+    model: ${DRIPPAY_AI_MODEL:gpt-4o-mini}
+  razorpay:
+    key-id: ${RAZORPAY_KEY_ID:}
+    key-secret: ${RAZORPAY_KEY_SECRET:}
+    simulated: ${RAZORPAY_SIMULATED:true}
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
   fraud:

@@ -13,10 +13,22 @@ public final class MoneyUtils {
     private MoneyUtils() {
     }
 
+    public static void requireAtMostTwoDecimalPlaces(BigDecimal amount) {
+        if (amount == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Amount is required");
+        }
+        try {
+            amount.setScale(2, RoundingMode.UNNECESSARY);
+        } catch (ArithmeticException e) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Amount supports at most 2 decimal places");
+        }
+    }
+
     public static BigDecimal normalize(BigDecimal amount) {
         if (amount == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Amount is required");
         }
+        requireAtMostTwoDecimalPlaces(amount);
         return amount.setScale(SCALE, RoundingMode.HALF_UP);
     }
 

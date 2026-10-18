@@ -47,6 +47,29 @@ export default function WalletPage() {
         </div>
         <p className="text-xs text-drip-muted">Simulated only — not real money or banking.</p>
       </div>
+      <div className="card space-y-4 p-6">
+        <h2 className="font-semibold">Razorpay (test mode)</h2>
+        <p className="text-sm text-drip-muted">
+          Creates a test order and credits your wallet after verify. Live keys use real Razorpay when configured.
+        </p>
+        <button
+          type="button"
+          className="btn-primary w-full"
+          onClick={async () => {
+            const amt = Number(amount) || 500;
+            const { data: order } = await api.post('/payments/razorpay/orders', { amount: amt });
+            await api.post('/payments/razorpay/verify', {
+              orderId: order.orderId,
+              paymentId: order.simulated ? `pay_sim_${Date.now()}` : undefined,
+              signature: order.simulated ? 'simulated' : undefined,
+            });
+            show('Razorpay test payment credited');
+            load();
+          }}
+        >
+          Pay ₹{amount || '500'} (simulated checkout)
+        </button>
+      </div>
     </div>
   );
 }

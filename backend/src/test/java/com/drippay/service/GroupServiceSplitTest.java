@@ -30,6 +30,7 @@ class GroupServiceSplitTest {
     @Mock WalletRepository walletRepository;
     @Mock TransferService transferService;
     @Mock SettlementRepository settlementRepository;
+    @Mock NotificationService notificationService;
 
     @InjectMocks GroupService groupService;
 

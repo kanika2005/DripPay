@@ -38,6 +38,22 @@ public class GroupController {
         return groupService.addExpense(SecurityUtils.currentUser().getId(), groupId, request);
     }
 
+    @GetMapping("/{groupId}/expenses/{expenseId}")
+    public GroupExpenseDetailResponse getExpense(@PathVariable Long groupId, @PathVariable Long expenseId) {
+        return groupService.getExpense(SecurityUtils.currentUser().getId(), groupId, expenseId);
+    }
+
+    @GetMapping("/{groupId}/members")
+    public List<GroupMemberResponse> members(@PathVariable Long groupId) {
+        return groupService.listMembers(SecurityUtils.currentUser().getId(), groupId);
+    }
+
+    @PostMapping("/{groupId}/members")
+    public GroupMemberResponse addMember(@PathVariable Long groupId,
+                                         @Valid @RequestBody AddGroupMemberRequest request) {
+        return groupService.addMember(SecurityUtils.currentUser().getId(), groupId, request);
+    }
+
     @GetMapping("/{groupId}/balances")
     public Map<Long, BigDecimal> balances(@PathVariable Long groupId) {
         return groupService.balances(groupId, SecurityUtils.currentUser().getId());

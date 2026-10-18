@@ -2,8 +2,10 @@ package com.drippay.controller;
 
 import com.drippay.dto.auth.AuthResponse;
 import com.drippay.dto.auth.LoginRequest;
+import com.drippay.dto.auth.RefreshRequest;
 import com.drippay.dto.auth.RegisterRequest;
 import com.drippay.service.AuthService;
+import org.springframework.security.core.context.SecurityContextHolder;
 import com.drippay.service.AuditService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -38,9 +40,20 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ResponseEntity.ok(authService.refresh(request.refreshToken()));
+    }
+
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
-        // JWT is stateless — client discards token
+    public ResponseEntity<Void> logout(@RequestBody(required = false) RefreshRequest request) {
+        Long userId = null;
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof com.drippay.security.UserPrincipal principal) {
+            userId = principal.getId();
+        }
+        String refresh = request != null ? request.refreshToken() : null;
+        authService.logout(userId, refresh);
         return ResponseEntity.noContent().build();
     }
 }

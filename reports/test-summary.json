@@ -1,62 +1,25 @@
 {
-  "project": "DripPay",
-  "reportGeneratedAt": "2026-10-14T18:24:00Z",
-  "overallStatus": "PASS_WITH_LIMITATIONS",
-  "environment": {
-    "java": "21.0.11 (Temurin) — project targets Java 17",
-    "springBoot": "3.3.4",
-    "maven": "3.9.9",
-    "node": "UNKNOWN — not available in QA execution environment",
-    "npm": "UNKNOWN",
-    "mysql": "9.7.1 (local)",
-    "os": "macOS (darwin)",
-    "docker": "not available in QA environment"
-  },
-  "builds": {
-    "backend": "PASS",
-    "frontend": "NOT_RUN"
-  },
-  "applicationStartup": {
-    "backend": "PASS",
-    "frontend": "NOT_RUN",
-    "mysqlConnectivity": "PASS"
-  },
-  "tests": {
-    "discovered": 19,
-    "executed": 17,
-    "passed": 17,
+  "runDate": "2026-10-19",
+  "automatedSuite": {
+    "command": "scripts/run-backend-tests.sh",
+    "testsRun": 16,
+    "passed": 16,
     "failed": 0,
-    "skipped": 0,
-    "blocked": 2,
-    "notRun": 42,
-    "notImplemented": 8
+    "skipped": 0
   },
-  "testDenominatorNote": "discovered = 16 Maven tests + 1 Vitest file + 42 manual/UI matrix cases defined in report; executed counts only automated runs with evidence",
-  "criticalDefects": 0,
-  "highDefects": 0,
-  "mediumDefects": 1,
-  "lowDefects": 2,
-  "defectsFixedDuringQA": 4,
-  "financialIntegrity": {
-    "ledgerBalanced": true,
-    "idempotencyVerified": true,
-    "concurrencyVerified": true,
-    "rollbackVerified": true
+  "validationMatrix": {
+    "totalCases": 160,
+    "pass": 38,
+    "fail": 12,
+    "blocked": 78,
+    "notRun": 32,
+    "p0": {
+      "total": 72,
+      "pass": 28,
+      "fail": 8,
+      "blocked": 28,
+      "notRun": 8
+    }
   },
-  "limitations": [
-    "Node.js/npm not available — frontend build, Vitest, and Playwright not executed",
-    "No browser-based UI regression (manual code review only for React pages)",
-    "Docker/Testcontainers not available — MySQL integration used local instance",
-    "Default JWT secret in application.yml is acceptable for local dev only",
-    "FraudWatch failed-transfer counter relies on persisted FAILED rows; insufficient-fund attempts are not persisted as FAILED transactions"
-  ],
-  "artifacts": [
-    "reports/DripPay_Test_Report.md",
-    "reports/test-summary.json",
-    "reports/logs/maven-test-full.log",
-    "reports/logs/e2e-smoke.log",
-    "backend/target/surefire-reports/",
-    "scripts/e2e-smoke.sh",
-    "scripts/run-backend-tests.sh"
-  ]
+  "reportFile": "reports/DripPay_Validation_Test_Report.md"
 }

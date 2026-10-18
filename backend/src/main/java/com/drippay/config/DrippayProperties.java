@@ -10,6 +10,8 @@ public class DrippayProperties {
     private final Jwt jwt = new Jwt();
     private final Cors cors = new Cors();
     private final Fraud fraud = new Fraud();
+    private final Ai ai = new Ai();
+    private final Razorpay razorpay = new Razorpay();
 
     public Jwt getJwt() {
         return jwt;
@@ -21,6 +23,14 @@ public class DrippayProperties {
 
     public Fraud getFraud() {
         return fraud;
+    }
+
+    public Ai getAi() {
+        return ai;
+    }
+
+    public Razorpay getRazorpay() {
+        return razorpay;
     }
 
     public static class Jwt {
@@ -92,6 +102,38 @@ public class DrippayProperties {
 
         public void setRapidTxCount(int rapidTxCount) {
             this.rapidTxCount = rapidTxCount;
+        }
+    }
+
+    public static class Ai {
+        private String apiKey = "";
+        private String baseUrl = "https://api.openai.com/v1";
+        private String model = "gpt-4o-mini";
+
+        public String getApiKey() { return apiKey; }
+        public void setApiKey(String apiKey) { this.apiKey = apiKey; }
+        public String getBaseUrl() { return baseUrl; }
+        public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
+        public String getModel() { return model; }
+        public void setModel(String model) { this.model = model; }
+        public boolean isEnabled() {
+            return apiKey != null && !apiKey.isBlank();
+        }
+    }
+
+    public static class Razorpay {
+        private String keyId = "";
+        private String keySecret = "";
+        private boolean simulated = true;
+
+        public String getKeyId() { return keyId; }
+        public void setKeyId(String keyId) { this.keyId = keyId; }
+        public String getKeySecret() { return keySecret; }
+        public void setKeySecret(String keySecret) { this.keySecret = keySecret; }
+        public boolean isSimulated() { return simulated; }
+        public void setSimulated(boolean simulated) { this.simulated = simulated; }
+        public boolean isLiveConfigured() {
+            return keyId != null && !keyId.isBlank() && keySecret != null && !keySecret.isBlank();
         }
     }
 }

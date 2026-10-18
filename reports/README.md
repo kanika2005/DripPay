@@ -12,7 +12,8 @@ This folder holds **validation reports**, **manual test cases**, **machine-reada
 |------|---------|
 | [**DripPay_Manual_Test_Cases.md**](./DripPay_Manual_Test_Cases.md) | **Manual / UI** checklist (~**186** cases): E2E journeys, per-screen flows, API edge cases, financial checks |
 | [**DripPay_Test_Report.md**](./DripPay_Test_Report.md) | Formal **QA report**: environment, automated test results, defects, financial integrity, security notes, recommendation |
-| [**test-summary.json**](./test-summary.json) | **JSON summary** of the same QA run (status counts, defects, integrity flags) |
+| [**DripPay_Validation_Test_Report.md**](./DripPay_Validation_Test_Report.md) | **Roadmap validation matrix** (~160 cases): Pass / Fail / Blocked / Not run per ID, mapped to JUnit tests |
+| [**test-summary.json**](./test-summary.json) | **JSON summary** of the latest run (Maven counts + matrix totals) |
 | **`logs/`** | Captured output from Maven tests, backend startup, and `e2e-smoke.sh` |
 
 ---

@@ -1,5 +1,6 @@
 package com.drippay.domain.entity;
 
+import com.drippay.domain.enums.KycTier;
 import com.drippay.domain.enums.UserRole;
 import jakarta.persistence.*;
 import java.time.Instant;
@@ -24,6 +25,16 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role = UserRole.USER;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "kyc_tier", nullable = false, length = 20)
+    private KycTier kycTier = KycTier.MIN_KYC;
+
+    @Column(name = "transfer_pin_hash")
+    private String transferPinHash;
+
+    @Column(name = "drip_handle", length = 64)
+    private String dripHandle;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -52,6 +63,12 @@ public class User {
     public void setFullName(String fullName) { this.fullName = fullName; }
     public UserRole getRole() { return role; }
     public void setRole(UserRole role) { this.role = role; }
+    public KycTier getKycTier() { return kycTier; }
+    public void setKycTier(KycTier kycTier) { this.kycTier = kycTier; }
+    public String getTransferPinHash() { return transferPinHash; }
+    public void setTransferPinHash(String transferPinHash) { this.transferPinHash = transferPinHash; }
+    public String getDripHandle() { return dripHandle; }
+    public void setDripHandle(String dripHandle) { this.dripHandle = dripHandle; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

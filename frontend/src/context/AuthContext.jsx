@@ -24,6 +24,7 @@ export function AuthProvider({ children }) {
       })
       .catch(() => {
         localStorage.removeItem('drippay_token');
+        localStorage.removeItem('drippay_refresh');
         localStorage.removeItem('drippay_user');
         setUser(null);
       })
@@ -39,6 +40,7 @@ export function AuthProvider({ children }) {
       async login(email, password) {
         const { data } = await api.post('/auth/login', { email, password });
         localStorage.setItem('drippay_token', data.accessToken);
+        if (data.refreshToken) localStorage.setItem('drippay_refresh', data.refreshToken);
         localStorage.setItem('drippay_user', JSON.stringify(data.user));
         setUser(data.user);
         return data;
@@ -46,15 +48,18 @@ export function AuthProvider({ children }) {
       async register(payload) {
         const { data } = await api.post('/auth/register', payload);
         localStorage.setItem('drippay_token', data.accessToken);
+        if (data.refreshToken) localStorage.setItem('drippay_refresh', data.refreshToken);
         localStorage.setItem('drippay_user', JSON.stringify(data.user));
         setUser(data.user);
         return data;
       },
       logout() {
+        const refresh = localStorage.getItem('drippay_refresh');
         localStorage.removeItem('drippay_token');
+        localStorage.removeItem('drippay_refresh');
         localStorage.removeItem('drippay_user');
         setUser(null);
-        api.post('/auth/logout').catch(() => {});
+        api.post('/auth/logout', refresh ? { refreshToken: refresh } : {}).catch(() => {});
       },
     }),
     [user, loading],

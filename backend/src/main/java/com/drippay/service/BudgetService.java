@@ -6,6 +6,7 @@ import com.drippay.dto.budget.BudgetResponse;
 import com.drippay.exception.ApiException;
 import com.drippay.repository.BudgetRepository;
 import com.drippay.repository.TransactionCategoryRepository;
+import com.drippay.repository.WalletRepository;
 import com.drippay.util.MoneyUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -20,10 +21,14 @@ public class BudgetService {
 
     private final BudgetRepository budgetRepository;
     private final TransactionCategoryRepository categoryRepository;
+    private final WalletRepository walletRepository;
 
-    public BudgetService(BudgetRepository budgetRepository, TransactionCategoryRepository categoryRepository) {
+    public BudgetService(BudgetRepository budgetRepository,
+                         TransactionCategoryRepository categoryRepository,
+                         WalletRepository walletRepository) {
         this.budgetRepository = budgetRepository;
         this.categoryRepository = categoryRepository;
+        this.walletRepository = walletRepository;
     }
 
     @Transactional(readOnly = true)
@@ -40,6 +45,15 @@ public class BudgetService {
                 .map(c -> c.getId())
                 .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Unknown category"));
 
+        var limit = MoneyUtils.normalize(request.monthlyLimit());
+        var balance = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Wallet not found"))
+                .getBalance();
+        if (limit.compareTo(balance) > 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Budget amount is more than your wallet balance. Available: " + balance);
+        }
+
         String monthYear = request.monthYear() != null ? request.monthYear()
                 : YearMonth.now(ZoneOffset.UTC).toString();
 
@@ -48,7 +62,7 @@ public class BudgetService {
         budget.setUserId(userId);
         budget.setCategoryId(categoryId);
         budget.setMonthYear(monthYear);
-        budget.setMonthlyLimit(MoneyUtils.normalize(request.monthlyLimit()));
+        budget.setMonthlyLimit(limit);
         return toResponse(budgetRepository.save(budget));
     }
 

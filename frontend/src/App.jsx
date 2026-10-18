@@ -10,11 +10,14 @@ import SendMoney from './pages/SendMoney';
 import Transactions from './pages/Transactions';
 import TransactionDetail from './pages/TransactionDetail';
 import Analytics from './pages/Analytics';
+import InsightsChat from './pages/InsightsChat';
 import Budgets from './pages/Budgets';
 import Groups from './pages/Groups';
 import Security from './pages/Security';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+import Collect from './pages/Collect';
+import PaymentDrafts from './pages/PaymentDrafts';
 
 export default function App() {
   return (
@@ -32,9 +35,12 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/wallet" element={<WalletPage />} />
         <Route path="/send" element={<SendMoney />} />
+        <Route path="/collect" element={<Collect />} />
+        <Route path="/payment-drafts" element={<PaymentDrafts />} />
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/transactions/:id" element={<TransactionDetail />} />
         <Route path="/analytics" element={<Analytics />} />
+        <Route path="/insights/chat" element={<InsightsChat />} />
         <Route path="/budgets" element={<Budgets />} />
         <Route path="/groups" element={<Groups />} />
         <Route path="/security" element={<Security />} />

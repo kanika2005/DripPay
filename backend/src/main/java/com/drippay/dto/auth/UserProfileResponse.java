@@ -7,6 +7,8 @@ public record UserProfileResponse(
         String email,
         String fullName,
         UserRole role,
-        String publicWalletId
+        String publicWalletId,
+        String dripHandle,
+        boolean hasTransferPin
 ) {
 }

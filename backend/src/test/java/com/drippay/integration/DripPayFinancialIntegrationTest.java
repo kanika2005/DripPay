@@ -79,6 +79,49 @@ class DripPayFinancialIntegrationTest {
     }
 
     @Test
+    @DisplayName("IT-AUTH-03 refresh rotates token")
+    void refreshRotatesToken() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"qa_a_refresh@drippay.test","password":"Password123!","fullName":"QA"}
+                                """))
+                .andExpect(status().isCreated());
+        MvcResult login = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"qa_a_refresh@drippay.test","password":"Password123!"}
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+        String refresh1 = objectMapper.readTree(login.getResponse().getContentAsString()).get("refreshToken").asText();
+        MvcResult refreshed = mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"" + refresh1 + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String refresh2 = objectMapper.readTree(refreshed.getResponse().getContentAsString()).get("refreshToken").asText();
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"" + refresh1 + "\"}"))
+                .andExpect(status().isUnauthorized());
+        assertThat(refresh2).isNotEqualTo(refresh1);
+    }
+
+    @Test
+    @DisplayName("IT-IDEM-03 missing idempotency key returns 400")
+    void missingIdempotencyKey() throws Exception {
+        deposit(userAToken, 100);
+        mockMvc.perform(post("/api/v1/transfers")
+                        .header("Authorization", "Bearer " + userAToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"recipientWalletId":"%s","amount":10}
+                                """.formatted(userBPublicWallet)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("IT-AUTH-02 invalid login returns 401")
     void invalidLogin() throws Exception {
         mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
@@ -208,6 +251,7 @@ class DripPayFinancialIntegrationTest {
         BigDecimal before = fetchBalance(userAToken);
         mockMvc.perform(post("/api/v1/transfers")
                         .header("Authorization", "Bearer " + userAToken)
+                        .header("Idempotency-Key", "insuf-" + UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"recipientWalletId":"%s","amount":500}
@@ -222,6 +266,7 @@ class DripPayFinancialIntegrationTest {
         deposit(userAToken, 100);
         mockMvc.perform(post("/api/v1/transfers")
                         .header("Authorization", "Bearer " + userAToken)
+                        .header("Idempotency-Key", "self-" + UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"recipientWalletId":"%s","amount":10}

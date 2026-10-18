@@ -8,10 +8,13 @@ import com.drippay.dto.auth.LoginRequest;
 import com.drippay.dto.auth.RegisterRequest;
 import com.drippay.dto.auth.UserProfileResponse;
 import com.drippay.exception.ApiException;
+import com.drippay.auth.RefreshTokenService;
 import com.drippay.repository.UserRepository;
 import com.drippay.repository.WalletRepository;
 import com.drippay.security.JwtService;
 import com.drippay.security.UserPrincipal;
+import com.drippay.ratelimit.RateLimitService;
+import com.drippay.collect.CollectService;
 import com.drippay.util.WalletIdGenerator;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,17 +33,29 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
+    private final RateLimitService rateLimitService;
+    private final CollectService collectService;
+    private final TransferPinService transferPinService;
 
     public AuthService(UserRepository userRepository,
                        WalletRepository walletRepository,
                        PasswordEncoder passwordEncoder,
                        AuthenticationManager authenticationManager,
-                       JwtService jwtService) {
+                       JwtService jwtService,
+                       RefreshTokenService refreshTokenService,
+                       RateLimitService rateLimitService,
+                       CollectService collectService,
+                       TransferPinService transferPinService) {
         this.userRepository = userRepository;
         this.walletRepository = walletRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
+        this.rateLimitService = rateLimitService;
+        this.collectService = collectService;
+        this.transferPinService = transferPinService;
     }
 
     @Transactional
@@ -61,13 +76,16 @@ public class AuthService {
         wallet.setPublicWalletId(generateUniqueWalletId());
         wallet.setBalance(BigDecimal.ZERO);
         walletRepository.save(wallet);
+        collectService.ensureHandle(user);
 
         UserPrincipal principal = new UserPrincipal(user);
         String token = jwtService.generateToken(principal);
-        return AuthResponse.of(token, toProfile(user, wallet.getPublicWalletId()));
+        String refresh = refreshTokenService.issueForUser(user.getId());
+        return AuthResponse.of(token, refresh, toProfile(user, wallet.getPublicWalletId()));
     }
 
     public AuthResponse login(LoginRequest request) {
+        rateLimitService.checkLogin(request.email());
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email().toLowerCase(), request.password()));
 
@@ -77,7 +95,27 @@ public class AuthService {
                 .orElseThrow(() -> new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Wallet missing"));
 
         UserPrincipal principal = new UserPrincipal(user);
-        return AuthResponse.of(jwtService.generateToken(principal), toProfile(user, wallet.getPublicWalletId()));
+        String refresh = refreshTokenService.issueForUser(user.getId());
+        return AuthResponse.of(jwtService.generateToken(principal), refresh, toProfile(user, wallet.getPublicWalletId()));
+    }
+
+    public AuthResponse refresh(String rawRefreshToken) {
+        var token = refreshTokenService.validateAndConsume(rawRefreshToken);
+        User user = userRepository.findById(token.getUserId())
+                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User not found"));
+        Wallet wallet = walletRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Wallet missing"));
+        UserPrincipal principal = new UserPrincipal(user);
+        String access = jwtService.generateToken(principal);
+        String newRefresh = refreshTokenService.issueForUser(user.getId());
+        return AuthResponse.of(access, newRefresh, toProfile(user, wallet.getPublicWalletId()));
+    }
+
+    public void logout(Long userId, String rawRefreshToken) {
+        refreshTokenService.revoke(rawRefreshToken);
+        if (userId != null) {
+            refreshTokenService.revokeAllForUser(userId);
+        }
     }
 
     public UserProfileResponse getProfile(Long userId) {
@@ -109,6 +147,12 @@ public class AuthService {
     }
 
     private UserProfileResponse toProfile(User user, String publicWalletId) {
-        return new UserProfileResponse(user.getId(), user.getEmail(), user.getFullName(), user.getRole(), publicWalletId);
+        String handle = user.getDripHandle();
+        if (handle == null || handle.isBlank()) {
+            handle = collectService.ensureHandle(user);
+        }
+        boolean hasPin = user.getTransferPinHash() != null && !user.getTransferPinHash().isBlank();
+        return new UserProfileResponse(
+                user.getId(), user.getEmail(), user.getFullName(), user.getRole(), publicWalletId, handle, hasPin);
     }
 }

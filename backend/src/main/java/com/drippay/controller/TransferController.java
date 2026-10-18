@@ -19,7 +19,7 @@ public class TransferController {
     }
 
     /**
-     * SafeTransfer — pass Idempotency-Key header for duplicate-safe transfers.
+     * SafeTransfer — Idempotency-Key header is required for duplicate-safe transfers.
      */
     @PostMapping
     public TransactionResponse transfer(@Valid @RequestBody TransferRequest request,

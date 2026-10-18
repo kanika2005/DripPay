@@ -2,24 +2,109 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Dark-first (default) — “Clear as water, exact as a ledger.” */
+:root.dark {
+  --drip-bg: #0b1220;
+  --drip-surface: #121b2e;
+  --drip-primary: #14b8a6;
+  --drip-accent: #38bdf8;
+  --drip-credit: #22c55e;
+  --drip-debit: #ef4444;
+  --drip-warning: #f59e0b;
+  --drip-reversed: #a78bfa;
+  --drip-text: #e5e7eb;
+  --drip-muted: #94a3b8;
+  --drip-border: color-mix(in srgb, #94a3b8 22%, transparent);
+}
+
+:root.light {
+  --drip-bg: #f1f5f9;
+  --drip-surface: #ffffff;
+  --drip-primary: #0d9488;
+  --drip-accent: #0284c7;
+  --drip-credit: #16a34a;
+  --drip-debit: #dc2626;
+  --drip-warning: #d97706;
+  --drip-reversed: #7c3aed;
+  --drip-text: #0f172a;
+  --drip-muted: #64748b;
+  --drip-border: color-mix(in srgb, #64748b 25%, transparent);
+}
+
 @layer base {
+  html {
+    @apply antialiased;
+  }
+  body {
+    @apply bg-drip-bg font-sans;
+    color: var(--drip-text);
+  }
   *:focus-visible {
-    outline: 2px solid #dfff68;
+    outline: 2px solid var(--drip-primary);
     outline-offset: 2px;
   }
 }
 
 @layer components {
   .card {
-    @apply rounded-2xl bg-drip-card border border-white/5 shadow-lg;
+    @apply border border-drip-border bg-drip-surface;
+    border-radius: 14px;
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--drip-border) 80%, transparent);
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-drip-lime px-4 py-2.5 font-semibold text-drip-bg transition hover:brightness-110 active:scale-[0.98];
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-drip-primary px-4 py-2.5 font-semibold text-drip-bg transition hover:brightness-110 active:scale-[0.98];
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 font-medium text-white transition hover:bg-white/5;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-drip-border px-4 py-2.5 font-medium text-drip-foreground transition hover:opacity-90;
+    background-color: transparent;
+  }
+  .btn-ghost:hover {
+    background-color: color-mix(in srgb, var(--drip-border) 35%, transparent);
   }
   .input {
-    @apply w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-white placeholder:text-drip-muted focus:border-drip-lime/50;
+    @apply w-full rounded-xl border border-drip-border px-4 py-2.5 text-drip-foreground placeholder:text-drip-muted;
+    background-color: color-mix(in srgb, var(--drip-bg) 55%, transparent);
+  }
+  .input:focus {
+    border-color: color-mix(in srgb, var(--drip-primary) 55%, transparent);
+  }
+  .font-amount {
+    @apply font-mono tabular-nums;
+  }
+  .status-pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1;
+  }
+  .status-success {
+    color: var(--drip-credit);
+    background: color-mix(in srgb, var(--drip-credit) 15%, transparent);
+    --tw-ring-color: color-mix(in srgb, var(--drip-credit) 30%, transparent);
+  }
+  .status-warning {
+    color: var(--drip-warning);
+    background: color-mix(in srgb, var(--drip-warning) 15%, transparent);
+    --tw-ring-color: color-mix(in srgb, var(--drip-warning) 30%, transparent);
+  }
+  .status-error {
+    color: var(--drip-debit);
+    background: color-mix(in srgb, var(--drip-debit) 15%, transparent);
+    --tw-ring-color: color-mix(in srgb, var(--drip-debit) 30%, transparent);
+  }
+  .status-reversed {
+    color: var(--drip-reversed);
+    background: color-mix(in srgb, var(--drip-reversed) 15%, transparent);
+    --tw-ring-color: color-mix(in srgb, var(--drip-reversed) 30%, transparent);
+  }
+  .status-muted {
+    @apply text-drip-muted;
+    background: color-mix(in srgb, var(--drip-border) 40%, transparent);
+    --tw-ring-color: var(--drip-border);
+  }
+  .skeleton {
+    @apply animate-pulse;
+    border-radius: 14px;
+    background-color: color-mix(in srgb, var(--drip-border) 45%, transparent);
+  }
+  .table-sticky thead {
+    @apply sticky top-0 z-10 bg-drip-surface backdrop-blur-sm;
   }
 }

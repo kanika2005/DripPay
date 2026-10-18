@@ -47,8 +47,8 @@ public class InsightService {
         Instant from = month.atDay(1).atStartOfDay().toInstant(ZoneOffset.UTC);
         Instant to = month.plusMonths(1).atDay(1).atStartOfDay().toInstant(ZoneOffset.UTC);
 
-        BigDecimal sent = transactionRepository.sumSent(wallet.getId(), TransactionStatus.COMPLETED, from, to);
-        BigDecimal received = transactionRepository.sumReceived(wallet.getId(), TransactionStatus.COMPLETED, from, to);
+        BigDecimal sent = transactionRepository.sumSentSettled(wallet.getId(), from, to);
+        BigDecimal received = transactionRepository.sumReceivedSettled(wallet.getId(), from, to);
 
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("balance", wallet.getBalance());
@@ -127,8 +127,8 @@ public class InsightService {
         YearMonth prev = month.minusMonths(1);
         Instant pFrom = prev.atDay(1).atStartOfDay().toInstant(ZoneOffset.UTC);
         Instant pTo = month.atDay(1).atStartOfDay().toInstant(ZoneOffset.UTC);
-        BigDecimal thisMonth = transactionRepository.sumSent(walletId, TransactionStatus.COMPLETED, from, to);
-        BigDecimal lastMonth = transactionRepository.sumSent(walletId, TransactionStatus.COMPLETED, pFrom, pTo);
+        BigDecimal thisMonth = transactionRepository.sumSentSettled(walletId, from, to);
+        BigDecimal lastMonth = transactionRepository.sumSentSettled(walletId, pFrom, pTo);
         if (lastMonth.compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal change = thisMonth.subtract(lastMonth);
             insights.add("You spent ₹" + change.setScale(2) + " more than last month on outgoing transfers (rule: period_compare).");

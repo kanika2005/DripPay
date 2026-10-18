@@ -49,6 +49,9 @@ public class WalletTransaction {
     @Column(name = "idempotency_key", length = 64)
     private String idempotencyKey;
 
+    @Column(name = "parent_txn_id")
+    private Long parentTxnId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -90,6 +93,8 @@ public class WalletTransaction {
     public void setDescription(String description) { this.description = description; }
     public String getIdempotencyKey() { return idempotencyKey; }
     public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
+    public Long getParentTxnId() { return parentTxnId; }
+    public void setParentTxnId(Long parentTxnId) { this.parentTxnId = parentTxnId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

@@ -8,6 +8,10 @@ import com.drippay.dto.transaction.AmountRequest;
 import com.drippay.dto.transaction.TransactionResponse;
 import com.drippay.dto.transaction.TransferRequest;
 import com.drippay.exception.ApiException;
+import com.drippay.kyc.KycLimitService;
+import com.drippay.merchant.WebhookService;
+import com.drippay.outbox.OutboxService;
+import com.drippay.ratelimit.RateLimitService;
 import com.drippay.repository.*;
 import com.drippay.util.MoneyUtils;
 import com.drippay.util.RequestHashUtil;
@@ -20,7 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -36,6 +42,10 @@ public class TransferService {
     private final TransactionCategoryRepository categoryRepository;
     private final FraudWatchService fraudWatchService;
     private final AuditService auditService;
+    private final OutboxService outboxService;
+    private final WebhookService webhookService;
+    private final KycLimitService kycLimitService;
+    private final RateLimitService rateLimitService;
 
     public TransferService(WalletRepository walletRepository,
                            WalletTransactionRepository transactionRepository,
@@ -43,7 +53,11 @@ public class TransferService {
                            IdempotencyRecordRepository idempotencyRecordRepository,
                            TransactionCategoryRepository categoryRepository,
                            FraudWatchService fraudWatchService,
-                           AuditService auditService) {
+                           AuditService auditService,
+                           OutboxService outboxService,
+                           WebhookService webhookService,
+                           KycLimitService kycLimitService,
+                           RateLimitService rateLimitService) {
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
         this.ledgerEntryRepository = ledgerEntryRepository;
@@ -51,28 +65,34 @@ public class TransferService {
         this.categoryRepository = categoryRepository;
         this.fraudWatchService = fraudWatchService;
         this.auditService = auditService;
+        this.outboxService = outboxService;
+        this.webhookService = webhookService;
+        this.kycLimitService = kycLimitService;
+        this.rateLimitService = rateLimitService;
     }
 
     @Transactional
     public TransactionResponse safeTransfer(Long senderUserId, TransferRequest request, String idempotencyKey, String ip) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Idempotency-Key header is required");
+        }
+        rateLimitService.checkTransfer(senderUserId);
         BigDecimal amount = MoneyUtils.normalize(request.amount());
         MoneyUtils.requirePositive(amount);
 
         String requestHash = RequestHashUtil.sha256(
                 request.recipientWalletId() + "|" + amount + "|" + nullToEmpty(request.note()));
 
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            var existing = idempotencyRecordRepository.findByUserIdAndIdempotencyKey(senderUserId, idempotencyKey);
-            if (existing.isPresent()) {
-                IdempotencyRecord record = existing.get();
-                if (!record.getRequestHash().equals(requestHash)) {
-                    throw new ApiException(HttpStatus.CONFLICT, "Idempotency key reused with different parameters");
-                }
-                if (record.getTransactionId() != null) {
-                    return transactionRepository.findById(record.getTransactionId())
-                            .map(tx -> toResponse(tx))
-                            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Transaction not found"));
-                }
+        var existing = idempotencyRecordRepository.findByUserIdAndIdempotencyKey(senderUserId, idempotencyKey);
+        if (existing.isPresent()) {
+            IdempotencyRecord record = existing.get();
+            if (!record.getRequestHash().equals(requestHash)) {
+                throw new ApiException(HttpStatus.CONFLICT, "Idempotency key reused with different parameters");
+            }
+            if (record.getTransactionId() != null) {
+                return transactionRepository.findById(record.getTransactionId())
+                        .map(tx -> toResponse(tx))
+                        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Transaction not found"));
             }
         }
 
@@ -102,13 +122,12 @@ public class TransferService {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "Insufficient balance");
             }
 
-            sender.setBalance(sender.getBalance().subtract(amount));
-            recipient.setBalance(recipient.getBalance().add(amount));
+            kycLimitService.assertTransferAllowed(senderUserId, sender, amount);
 
             WalletTransaction tx = new WalletTransaction();
             tx.setReferenceId(UUID.randomUUID().toString());
             tx.setType(TransactionType.P2P_TRANSFER);
-            tx.setStatus(TransactionStatus.COMPLETED);
+            tx.setStatus(TransactionStatus.INITIATED);
             tx.setAmount(amount);
             tx.setSenderWalletId(sender.getId());
             tx.setRecipientWalletId(recipient.getId());
@@ -118,22 +137,31 @@ public class TransferService {
             tx.setIdempotencyKey(idempotencyKey);
             tx = transactionRepository.save(tx);
 
+            tx.setStatus(TransactionStatus.PENDING);
+            transactionRepository.save(tx);
+
+            sender.setBalance(sender.getBalance().subtract(amount));
+            recipient.setBalance(recipient.getBalance().add(amount));
+
             postLedger(tx.getId(), sender.getId(), LedgerEntryType.DEBIT, amount);
             postLedger(tx.getId(), recipient.getId(), LedgerEntryType.CREDIT, amount);
 
-            if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-                IdempotencyRecord record = idempotencyRecordRepository
-                        .findByUserIdAndIdempotencyKey(senderUserId, idempotencyKey)
-                        .orElseGet(IdempotencyRecord::new);
-                record.setUserId(senderUserId);
-                record.setIdempotencyKey(idempotencyKey);
-                record.setRequestHash(requestHash);
-                record.setTransactionId(tx.getId());
-                idempotencyRecordRepository.save(record);
-            }
+            tx.setStatus(TransactionStatus.SUCCESS);
+            transactionRepository.save(tx);
+
+            IdempotencyRecord record = idempotencyRecordRepository
+                    .findByUserIdAndIdempotencyKey(senderUserId, idempotencyKey)
+                    .orElseGet(IdempotencyRecord::new);
+            record.setUserId(senderUserId);
+            record.setIdempotencyKey(idempotencyKey);
+            record.setRequestHash(requestHash);
+            record.setTransactionId(tx.getId());
+            idempotencyRecordRepository.save(record);
 
             fraudWatchService.onSuccessfulTransfer(senderUserId, amount);
             auditService.log(senderUserId, "TRANSFER_COMPLETED", "ref=" + tx.getReferenceId(), ip);
+
+            publishTransferEvents(tx, sender, recipient);
 
             return toResponse(tx);
         } catch (ApiException ex) {
@@ -184,7 +212,7 @@ public class TransferService {
         WalletTransaction tx = new WalletTransaction();
         tx.setReferenceId(UUID.randomUUID().toString());
         tx.setType(type);
-        tx.setStatus(TransactionStatus.COMPLETED);
+        tx.setStatus(TransactionStatus.INITIATED);
         tx.setAmount(amount);
         if (creditUser) {
             tx.setSenderWalletId(platform.getId());
@@ -197,6 +225,8 @@ public class TransferService {
         tx.setCategoryId(transferCategoryId);
         tx.setDescription(request.note());
         tx = transactionRepository.save(tx);
+        tx.setStatus(TransactionStatus.PENDING);
+        transactionRepository.save(tx);
 
         if (creditUser) {
             postLedger(tx.getId(), platform.getId(), LedgerEntryType.DEBIT, amount);
@@ -205,6 +235,9 @@ public class TransferService {
             postLedger(tx.getId(), user.getId(), LedgerEntryType.DEBIT, amount);
             postLedger(tx.getId(), platform.getId(), LedgerEntryType.CREDIT, amount);
         }
+
+        tx.setStatus(TransactionStatus.SUCCESS);
+        transactionRepository.save(tx);
 
         auditService.log(userId, type.name(), "ref=" + tx.getReferenceId(), ip);
         return toResponse(tx);
@@ -233,6 +266,63 @@ public class TransferService {
             throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to view this transaction");
         }
         return toResponse(tx);
+    }
+
+    @Transactional
+    public TransactionResponse reverseTransfer(Long userId, Long originalTxnId, String ip) {
+        Wallet wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Wallet not found"));
+        WalletTransaction original = transactionRepository.findById(originalTxnId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Transaction not found"));
+
+        if (!wallet.getId().equals(original.getSenderWalletId()) && !wallet.getId().equals(original.getRecipientWalletId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Not allowed to reverse this transaction");
+        }
+        if (original.getStatus() != TransactionStatus.COMPLETED && original.getStatus() != TransactionStatus.SUCCESS) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Only completed transfers can be reversed");
+        }
+        if (original.getType() != TransactionType.P2P_TRANSFER) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Only P2P transfers can be reversed");
+        }
+        if (transactionRepository.existsByParentTxnId(originalTxnId)) {
+            throw new ApiException(HttpStatus.CONFLICT, "Transaction already reversed");
+        }
+
+        BigDecimal amount = original.getAmount();
+        Long senderId = original.getSenderWalletId();
+        Long recipientId = original.getRecipientWalletId();
+
+        lockWalletsInOrder(senderId, recipientId);
+        Wallet sender = walletRepository.findByIdForUpdate(senderId).orElseThrow();
+        Wallet recipient = walletRepository.findByIdForUpdate(recipientId).orElseThrow();
+
+        if (recipient.getBalance().compareTo(amount) < 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Recipient has insufficient balance to reverse");
+        }
+
+        recipient.setBalance(recipient.getBalance().subtract(amount));
+        sender.setBalance(sender.getBalance().add(amount));
+
+        original.setStatus(TransactionStatus.REVERSED);
+        transactionRepository.save(original);
+
+        WalletTransaction reversal = new WalletTransaction();
+        reversal.setReferenceId(UUID.randomUUID().toString());
+        reversal.setType(TransactionType.P2P_TRANSFER);
+        reversal.setStatus(TransactionStatus.SUCCESS);
+        reversal.setAmount(amount);
+        reversal.setSenderWalletId(recipientId);
+        reversal.setRecipientWalletId(senderId);
+        reversal.setInitiatedByUserId(userId);
+        reversal.setParentTxnId(originalTxnId);
+        reversal.setDescription("Reversal of " + original.getReferenceId());
+        reversal = transactionRepository.save(reversal);
+
+        postLedger(reversal.getId(), recipientId, LedgerEntryType.DEBIT, amount);
+        postLedger(reversal.getId(), senderId, LedgerEntryType.CREDIT, amount);
+
+        auditService.log(userId, "TRANSFER_REVERSED", "original=" + original.getReferenceId(), ip);
+        return toResponse(reversal);
     }
 
     @Transactional(readOnly = true)
@@ -295,6 +385,18 @@ public class TransferService {
                 categoryCode,
                 tx.getCreatedAt()
         );
+    }
+
+    private void publishTransferEvents(WalletTransaction tx, Wallet sender, Wallet recipient) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("referenceId", tx.getReferenceId());
+        payload.put("amount", tx.getAmount());
+        payload.put("currency", tx.getCurrency());
+        payload.put("senderWalletId", sender.getPublicWalletId());
+        payload.put("recipientWalletId", recipient.getPublicWalletId());
+        outboxService.enqueue("PAYMENT_COMPLETED", payload);
+
+        webhookService.enqueueForUser(recipient.getUserId(), "PAYMENT_RECEIVED", payload);
     }
 
     private String nullToEmpty(String s) {

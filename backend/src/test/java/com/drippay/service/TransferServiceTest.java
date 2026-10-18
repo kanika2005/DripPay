@@ -31,6 +31,10 @@ class TransferServiceTest {
     @Mock TransactionCategoryRepository categoryRepository;
     @Mock FraudWatchService fraudWatchService;
     @Mock AuditService auditService;
+    @Mock com.drippay.outbox.OutboxService outboxService;
+    @Mock com.drippay.merchant.WebhookService webhookService;
+    @Mock com.drippay.kyc.KycLimitService kycLimitService;
+    @Mock com.drippay.ratelimit.RateLimitService rateLimitService;
 
     @InjectMocks TransferService transferService;
 
@@ -66,7 +70,7 @@ class TransferServiceTest {
         });
 
         TransferRequest req = new TransferRequest("DRIPRECV01", new BigDecimal("5000"), "test", null);
-        assertThrows(ApiException.class, () -> transferService.safeTransfer(10L, req, null, "127.0.0.1"));
+        assertThrows(ApiException.class, () -> transferService.safeTransfer(10L, req, "idem-key-1", "127.0.0.1"));
         verify(fraudWatchService).onFailedTransfer(10L);
     }
 
@@ -76,7 +80,7 @@ class TransferServiceTest {
         when(walletRepository.findByPublicWalletId("DRIPSENDER1")).thenReturn(Optional.of(sender));
 
         TransferRequest req = new TransferRequest("DRIPSENDER1", new BigDecimal("10"), null, null);
-        assertThrows(ApiException.class, () -> transferService.safeTransfer(10L, req, null, "127.0.0.1"));
+        assertThrows(ApiException.class, () -> transferService.safeTransfer(10L, req, "idem-key-2", "127.0.0.1"));
     }
 
     private TransactionCategory category() {

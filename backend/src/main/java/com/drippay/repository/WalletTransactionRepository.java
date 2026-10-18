@@ -23,7 +23,8 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
         AND (:categoryId IS NULL OR t.categoryId = :categoryId)
         AND (:from IS NULL OR t.createdAt >= :from)
         AND (:to IS NULL OR t.createdAt <= :to)
-        AND t.status = com.drippay.domain.enums.TransactionStatus.COMPLETED
+        AND t.status IN (com.drippay.domain.enums.TransactionStatus.COMPLETED,
+            com.drippay.domain.enums.TransactionStatus.SUCCESS)
         ORDER BY t.createdAt DESC
         """)
     Page<WalletTransaction> searchForWallet(
@@ -44,6 +45,16 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
 
     @Query("""
         SELECT COALESCE(SUM(t.amount), 0) FROM WalletTransaction t
+        WHERE t.senderWalletId = :walletId
+        AND t.status IN (com.drippay.domain.enums.TransactionStatus.COMPLETED,
+            com.drippay.domain.enums.TransactionStatus.SUCCESS)
+        AND t.createdAt >= :from AND t.createdAt < :to
+        """)
+    BigDecimal sumSentSettled(@Param("walletId") Long walletId,
+                              @Param("from") Instant from, @Param("to") Instant to);
+
+    @Query("""
+        SELECT COALESCE(SUM(t.amount), 0) FROM WalletTransaction t
         WHERE t.recipientWalletId = :walletId
         AND t.status = :status
         AND t.createdAt >= :from AND t.createdAt < :to
@@ -51,8 +62,20 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
     BigDecimal sumReceived(@Param("walletId") Long walletId, @Param("status") TransactionStatus status,
                            @Param("from") Instant from, @Param("to") Instant to);
 
+    @Query("""
+        SELECT COALESCE(SUM(t.amount), 0) FROM WalletTransaction t
+        WHERE t.recipientWalletId = :walletId
+        AND t.status IN (com.drippay.domain.enums.TransactionStatus.COMPLETED,
+            com.drippay.domain.enums.TransactionStatus.SUCCESS)
+        AND t.createdAt >= :from AND t.createdAt < :to
+        """)
+    BigDecimal sumReceivedSettled(@Param("walletId") Long walletId,
+                                  @Param("from") Instant from, @Param("to") Instant to);
+
     long countByInitiatedByUserIdAndStatusAndTypeAndCreatedAtAfter(
             Long userId, TransactionStatus status, TransactionType type, Instant after);
 
     long countByInitiatedByUserIdAndCreatedAtAfter(Long userId, Instant after);
+
+    boolean existsByParentTxnId(Long parentTxnId);
 }
