@@ -1,8 +1,12 @@
 # DripPay — Design decisions
 
+## Product direction
+
+**Smart wallet + merchant payment gateway.** Consumer wallet proves ledger correctness; **payment gateway (`pg`)** proves merchant integration, lifecycle, webhooks, refunds, and settlement. Full target architecture: [PAYMENT_GATEWAY_ARCHITECTURE.md](./PAYMENT_GATEWAY_ARCHITECTURE.md). Package evolution: [MODULE_MAP.md](./MODULE_MAP.md).
+
 ## Modular monolith (not microservices v1)
 
-Single Spring Boot app with clear packages (`auth`, `wallet`, `ledger`, `txn`, `risk`, `merchant`, `outbox`, `ai`). Easier to test, deploy, and explain in interviews. **Outbox** table lets you add Kafka later without rewriting business logic.
+Single Spring Boot app with clear packages (`auth`, `wallet`, **`pg`**, `ledger`, `risk`, `merchant`, `outbox`, `ai`). Easier to test, deploy, and explain in interviews. **Outbox** table lets you add Kafka later without rewriting business logic.
 
 ## Double-entry ledger + wallet balance
 

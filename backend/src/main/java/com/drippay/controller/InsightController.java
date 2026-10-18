@@ -4,6 +4,7 @@ import com.drippay.security.SecurityUtils;
 import com.drippay.ai.InsightsChatService;
 import com.drippay.dto.insights.ChatRequest;
 import com.drippay.dto.insights.ChatResponse;
+import com.drippay.dto.insights.PayeeContactsResponse;
 import com.drippay.service.InsightService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +31,11 @@ public class InsightController {
     @GetMapping("/summary")
     public Map<String, Object> summary() {
         return insightService.dashboardSummary(SecurityUtils.currentUser().getId());
+    }
+
+    @GetMapping("/payees")
+    public PayeeContactsResponse payees() {
+        return insightService.payeeContacts(SecurityUtils.currentUser().getId());
     }
 
     @GetMapping("/categories")

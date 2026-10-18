@@ -17,6 +17,7 @@ import Security from './pages/Security';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
 import Collect from './pages/Collect';
+import CollectPayRedirect from './pages/CollectPayRedirect';
 import PaymentDrafts from './pages/PaymentDrafts';
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/collect/pay" element={<CollectPayRedirect />} />
       <Route
         element={
           <ProtectedRoute>

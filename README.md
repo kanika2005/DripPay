@@ -1,6 +1,8 @@
 # DripPay — Your Money. Your Vibe.
 
-Portfolio-grade **simulated** digital wallet: Spring Boot + React + MySQL.
+Portfolio-grade **simulated** digital wallet and **merchant payment gateway**: Spring Boot + React + MySQL.
+
+**Architecture (wallet + PG):** [docs/PAYMENT_GATEWAY_ARCHITECTURE.md](docs/PAYMENT_GATEWAY_ARCHITECTURE.md) · [docs/MODULE_MAP.md](docs/MODULE_MAP.md)
 
 | Layer | Path | Stack |
 |-------|------|--------|
@@ -8,21 +10,36 @@ Portfolio-grade **simulated** digital wallet: Spring Boot + React + MySQL.
 | Frontend | `frontend/` | React (Vite), Tailwind, Axios, Recharts |
 | Learning sandbox | `wallet-service/` | Original Gradle tutorial wallet (optional) |
 
-## Architecture
+## Architecture (high level)
 
 ```mermaid
-flowchart LR
-  subgraph client [React SPA]
-    UI[DripPay UI]
+flowchart TB
+  subgraph fe [React]
+    Wallet[Customer wallet]
+    Checkout[Hosted checkout planned]
+    MerchDash[Merchant dashboard planned]
   end
-  subgraph api [Spring Boot]
-    C[Controllers]
-    S[Services]
-    R[Repositories]
+  subgraph be [Spring Boot monolith]
+    WAL[Wallet module]
+    PG[Payment gateway pg]
+    EVT[Outbox and webhooks]
+    FIN[Settlement and recon]
   end
-  DB[(MySQL 8)]
-  UI -->|HTTPS JSON JWT| C --> S --> R --> DB
+  DB[(MySQL)]
+  PSP[Simulated PSP]
+
+  Wallet --> WAL
+  Checkout --> PG
+  MerchDash --> PG
+  PG --> PSP
+  PG --> WAL
+  PG --> EVT
+  PG --> FIN
+  WAL --> DB
+  PG --> DB
 ```
+
+Details, APIs, schema, and test plan: **[docs/PAYMENT_GATEWAY_ARCHITECTURE.md](docs/PAYMENT_GATEWAY_ARCHITECTURE.md)**.
 
 ## ER diagram (core)
 

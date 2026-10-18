@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, Long> {
@@ -78,4 +79,14 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
     long countByInitiatedByUserIdAndCreatedAtAfter(Long userId, Instant after);
 
     boolean existsByParentTxnId(Long parentTxnId);
+
+    @Query("""
+        SELECT t FROM WalletTransaction t
+        WHERE t.senderWalletId = :walletId
+        AND t.type = com.drippay.domain.enums.TransactionType.P2P_TRANSFER
+        AND t.status IN (com.drippay.domain.enums.TransactionStatus.COMPLETED,
+            com.drippay.domain.enums.TransactionStatus.SUCCESS)
+        ORDER BY t.createdAt DESC
+        """)
+    List<WalletTransaction> findRecentOutboundP2P(@Param("walletId") Long walletId, Pageable pageable);
 }

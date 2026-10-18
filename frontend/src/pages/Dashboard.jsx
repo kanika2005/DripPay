@@ -2,27 +2,26 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowDownLeft, ArrowUpRight, Plus, Send, Wallet } from 'lucide-react';
 import api from '../api/client';
-import SignedTransactionAmount from '../components/SignedTransactionAmount';
-import StatusPill from '../components/StatusPill';
+import PayeeQuickList from '../components/PayeeQuickList';
 import { formatINR } from '../utils/format';
 
 export default function Dashboard() {
   const [summary, setSummary] = useState(null);
   const [wallet, setWallet] = useState(null);
-  const [txs, setTxs] = useState([]);
+  const [payees, setPayees] = useState({ recentlyPaid: [], mostContacted: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [s, w, t] = await Promise.all([
+        const [s, w, p] = await Promise.all([
           api.get('/insights/summary'),
           api.get('/wallets/me'),
-          api.get('/transactions', { params: { page: 0, size: 5 } }),
+          api.get('/insights/payees'),
         ]);
         setSummary(s.data);
         setWallet(w.data);
-        setTxs(t.data.content || []);
+        setPayees(p.data);
       } finally {
         setLoading(false);
       }
@@ -43,7 +42,9 @@ export default function Dashboard() {
     );
   }
 
-  const empty = Number(wallet?.balance) === 0 && txs.length === 0;
+  const empty = Number(wallet?.balance) === 0
+    && payees.recentlyPaid.length === 0
+    && payees.mostContacted.length === 0;
 
   return (
     <div className="space-y-6">
@@ -69,6 +70,21 @@ export default function Dashboard() {
           <Link to="/wallet" className="btn-ghost">
             <Wallet size={16} /> Wallet
           </Link>
+        </div>
+      </div>
+
+      <div className="card p-6">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="font-semibold">Pay again</h2>
+          <Link to="/send" className="text-sm font-medium text-drip-primary hover:underline">
+            Scan &amp; Pay
+          </Link>
+        </div>
+        <div className="mt-4">
+          <PayeeQuickList
+            recentlyPaid={payees.recentlyPaid}
+            mostContacted={payees.mostContacted}
+          />
         </div>
       </div>
 
@@ -98,34 +114,12 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="card p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold">Recent transactions</h2>
-          <Link to="/transactions" className="text-sm font-medium text-drip-primary hover:underline">
-            View all
-          </Link>
-        </div>
-        {txs.length === 0 ? (
-          <p className="mt-4 text-sm text-drip-muted">No transactions yet.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-drip-border">
-            {txs.map((tx) => (
-              <li key={tx.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
-                <div>
-                  <p className="font-medium">{tx.type.replace(/_/g, ' ')}</p>
-                  <p className="text-drip-muted">{new Date(tx.createdAt).toLocaleString()}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <StatusPill status={tx.status} />
-                  <Link to={`/transactions/${tx.id}`} className="hover:opacity-90">
-                    <SignedTransactionAmount tx={tx} myWalletId={wallet?.publicWalletId} />
-                  </Link>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <p className="text-center text-sm text-drip-muted">
+        Full history in{' '}
+        <Link to="/transactions" className="font-medium text-drip-primary hover:underline">
+          Transactions
+        </Link>
+      </p>
     </div>
   );
 }

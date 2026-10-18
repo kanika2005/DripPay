@@ -21,7 +21,10 @@ export default function Login() {
     try {
       await login(email, password);
       show('Welcome back to DripPay');
-      navigate('/dashboard');
+      const redirect = params.get('redirect');
+      const safe =
+        redirect && redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/dashboard';
+      navigate(safe);
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
     } finally {

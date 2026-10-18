@@ -1,10 +1,13 @@
-import { Droplet } from 'lucide-react';
+import DripPayMark from './DripPayMark';
 
 export default function Logo({ compact = false }) {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-drip-primary/15 ring-1 ring-drip-primary/35">
-        <Droplet size={20} className="text-drip-primary" aria-hidden="true" />
+      <div
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-drip-surface ring-1 ring-drip-border text-drip-foreground"
+        aria-hidden="true"
+      >
+        <DripPayMark size={28} />
       </div>
       {!compact && (
         <div>

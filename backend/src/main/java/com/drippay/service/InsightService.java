@@ -2,11 +2,15 @@ package com.drippay.service;
 
 import com.drippay.domain.entity.Budget;
 import com.drippay.domain.entity.TransactionCategory;
+import com.drippay.domain.entity.User;
 import com.drippay.domain.entity.Wallet;
 import com.drippay.domain.entity.WalletTransaction;
+import com.drippay.dto.insights.PayeeContactResponse;
+import com.drippay.dto.insights.PayeeContactsResponse;
 import com.drippay.domain.enums.TransactionStatus;
 import com.drippay.exception.ApiException;
 import com.drippay.repository.*;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,15 +31,18 @@ public class InsightService {
     private final WalletTransactionRepository transactionRepository;
     private final TransactionCategoryRepository categoryRepository;
     private final BudgetRepository budgetRepository;
+    private final UserRepository userRepository;
 
     public InsightService(WalletRepository walletRepository,
                           WalletTransactionRepository transactionRepository,
                           TransactionCategoryRepository categoryRepository,
-                          BudgetRepository budgetRepository) {
+                          BudgetRepository budgetRepository,
+                          UserRepository userRepository) {
         this.walletRepository = walletRepository;
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.budgetRepository = budgetRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
@@ -58,6 +65,72 @@ public class InsightService {
         summary.put("monthlySpending", sent);
         summary.put("insights", buildInsights(userId, wallet.getId(), month));
         return summary;
+    }
+
+    @Transactional(readOnly = true)
+    public PayeeContactsResponse payeeContacts(Long userId) {
+        Wallet wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Wallet not found"));
+
+        List<WalletTransaction> outbound = transactionRepository.findRecentOutboundP2P(
+                wallet.getId(), PageRequest.of(0, 150));
+
+        Map<Long, PayeeStats> statsByRecipient = new LinkedHashMap<>();
+        for (WalletTransaction tx : outbound) {
+            Long recipientId = tx.getRecipientWalletId();
+            if (recipientId == null) {
+                continue;
+            }
+            PayeeStats stats = statsByRecipient.computeIfAbsent(recipientId, id -> new PayeeStats());
+            stats.transferCount++;
+            if (stats.lastPaidAt == null || tx.getCreatedAt().isAfter(stats.lastPaidAt)) {
+                stats.lastPaidAt = tx.getCreatedAt();
+                stats.lastAmount = tx.getAmount();
+            }
+        }
+
+        List<PayeeContactResponse> recentlyPaid = new ArrayList<>();
+        Set<Long> seen = new HashSet<>();
+        for (WalletTransaction tx : outbound) {
+            Long recipientId = tx.getRecipientWalletId();
+            if (recipientId == null || seen.contains(recipientId)) {
+                continue;
+            }
+            seen.add(recipientId);
+            recentlyPaid.add(toPayeeContact(recipientId, statsByRecipient.get(recipientId)));
+            if (recentlyPaid.size() >= 5) {
+                break;
+            }
+        }
+
+        List<PayeeContactResponse> mostContacted = statsByRecipient.entrySet().stream()
+                .sorted((a, b) -> Long.compare(b.getValue().transferCount, a.getValue().transferCount))
+                .limit(5)
+                .map(e -> toPayeeContact(e.getKey(), e.getValue()))
+                .toList();
+
+        return new PayeeContactsResponse(recentlyPaid, mostContacted);
+    }
+
+    private PayeeContactResponse toPayeeContact(Long recipientWalletId, PayeeStats stats) {
+        Wallet recipientWallet = walletRepository.findById(recipientWalletId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Recipient wallet not found"));
+        User user = userRepository.findById(recipientWallet.getUserId()).orElse(null);
+        String displayName = user != null ? user.getFullName() : recipientWallet.getPublicWalletId();
+        String dripHandle = user != null ? user.getDripHandle() : null;
+        return new PayeeContactResponse(
+                recipientWallet.getPublicWalletId(),
+                displayName,
+                dripHandle,
+                stats.lastPaidAt,
+                stats.lastAmount,
+                stats.transferCount);
+    }
+
+    private static final class PayeeStats {
+        Instant lastPaidAt;
+        BigDecimal lastAmount;
+        long transferCount;
     }
 
     @Transactional(readOnly = true)

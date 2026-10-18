@@ -1,8 +1,32 @@
 # DripPay Roadmap
 
-Backend-first wallet & transaction intelligence platform. **Only claim on your resume what is built and tested.**
+**Smart wallet + merchant payment gateway.** PG is the flagship backend narrative for fintech roles.
+
+**Architecture:** [docs/PAYMENT_GATEWAY_ARCHITECTURE.md](docs/PAYMENT_GATEWAY_ARCHITECTURE.md) · [docs/MODULE_MAP.md](docs/MODULE_MAP.md)
+
+**Only claim on your resume what is built and tested.**
 
 See [docs/DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) for architecture rationale.
+
+---
+
+## Phase 2 — Payment gateway (priority order)
+
+- [ ] **P0** Merchant register + MID + HMAC API auth (timestamp, request id)
+- [ ] **P0** `POST /pg/orders` idempotent + hosted checkout (server-side amount)
+- [ ] **P0** Payment state machine (order vs attempt) + `GET .../status`
+- [ ] **P0** Signed provider webhooks + merchant callbacks (outbox + retries)
+- [ ] **P1** Pending payment recovery (timeout ≠ failure)
+- [ ] **P1** Refunds (partial/full, idempotent, cap at capture)
+- [ ] **P1** Settlement batches + MDR + reconciliation exceptions
+- [ ] **P2** Merchant dashboard React + merchant AI read-only tools
+- [ ] **P2** Routing, disputes, payment links (after core 7 tests green)
+
+### PG test gate (before P2 extras)
+
+Duplicate order · bad HMAC · duplicate webhook · provider timeout · merchant 500 retry · concurrent refunds · settlement recon.
+
+---
 
 ## Guiding rules
 

@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/client';
+import PersonalCollectQr from '../components/PersonalCollectQr';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
@@ -25,12 +27,10 @@ export default function Profile() {
         <label className="text-sm text-drip-muted">Wallet ID</label>
         <p className="font-mono text-drip-lime">{user?.publicWalletId}</p>
       </div>
-      {user?.dripHandle && (
-        <div>
-          <label className="text-sm text-drip-muted">Collect handle</label>
-          <p className="font-mono text-drip-primary">{user.dripHandle}</p>
-        </div>
-      )}
+      <hr className="border-drip-border" />
+      <h2 className="font-semibold">Your payment QR</h2>
+      <p className="text-sm text-drip-muted">Others scan this to pay you via Scan &amp; Pay.</p>
+      <PersonalCollectQr size={200} showManageLink />
       <div>
         <label className="text-sm text-drip-muted">Full name</label>
         <input className="input mt-1" value={fullName} onChange={(e) => setFullName(e.target.value)} />
@@ -61,6 +61,10 @@ export default function Profile() {
       >
         Save PIN
       </button>
+      <hr className="border-drip-border" />
+      <Link to="/security" className="text-sm font-medium text-drip-primary hover:underline">
+        Open FraudWatch security alerts →
+      </Link>
     </div>
   );
 }
