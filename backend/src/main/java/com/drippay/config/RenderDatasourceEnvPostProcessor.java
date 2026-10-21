@@ -8,11 +8,17 @@ import org.springframework.core.env.MapPropertySource;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Builds JDBC URL from MYSQL_HOST when DB_URL is unset; rejects doc placeholders left in DB_URL.
  */
 public class RenderDatasourceEnvPostProcessor implements EnvironmentPostProcessor {
+
+    private static final Logger LOG = Logger.getLogger(RenderDatasourceEnvPostProcessor.class.getName());
+    private static final Pattern JDBC_HOST = Pattern.compile("jdbc:mysql://([^:/]+)");
 
     private static final Set<String> PLACEHOLDER_HOSTS = Set.of(
             "YOUR_MYSQL_HOST",
@@ -43,7 +49,15 @@ public class RenderDatasourceEnvPostProcessor implements EnvironmentPostProcesso
                 Map<String, Object> map = new LinkedHashMap<>();
                 map.put("DB_URL", built);
                 environment.getPropertySources().addFirst(new MapPropertySource("renderMysqlJdbc", map));
+                dbUrl = built;
             }
+        }
+
+        String effective = environment.getProperty("DB_URL", dbUrl);
+        if (effective != null) {
+            Matcher m = JDBC_HOST.matcher(effective);
+            String host = m.find() ? m.group(1) : "(unparsed)";
+            LOG.info("DripPay datasource host: " + host + " — fix Render env if this is not your MySQL private hostname");
         }
     }
 

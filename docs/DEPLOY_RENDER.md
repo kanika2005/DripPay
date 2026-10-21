@@ -4,6 +4,13 @@
 
 You copied the **example** `DB_URL` without replacing the host. Render cannot resolve `YOUR_MYSQL_HOST` as a real server.
 
+**This is fixed in the Render dashboard, not by redeploying the same env.**
+
+1. Open **your API Web Service** (not the repo) → **Environment**.
+2. Click **Reveal** on `DB_URL`. If you see `YOUR_MYSQL_HOST`, that is the bug.
+3. Replace with your real MySQL internal hostname, **Save Changes** (Render redeploys).
+4. Confirm deploy logs show `DripPay datasource host: mysql-xxxxx` (not `YOUR_MYSQL_HOST`).
+
 **Fix (choose one):**
 
 ### A — Set a real `DB_URL`
