@@ -1,0 +1,8 @@
+frontend/
+wallet-service/
+.git/
+**/.env
+**/.env.*
+**/target/
+node_modules/
+reports/

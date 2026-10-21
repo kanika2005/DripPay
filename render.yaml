@@ -5,8 +5,8 @@ services:
   - type: web
     name: drippay-api
     runtime: docker
-    rootDir: backend
-    dockerfilePath: Dockerfile
+    # Use repo-root Dockerfile, or set rootDir: backend + backend/Dockerfile
+    dockerfilePath: ./Dockerfile
     plan: starter
     healthCheckPath: /actuator/health
     envVars:
