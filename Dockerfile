@@ -1,12 +1,12 @@
-# Render / Docker build from repository root (backend lives in backend/)
-FROM eclipse-temurin:17-jdk-jammy AS build
+# Build from repository root (backend in backend/)
+FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
 
-COPY backend/mvnw backend/.mvn backend/pom.xml ./
-RUN chmod +x mvnw && ./mvnw -q -DskipTests dependency:go-offline
+COPY backend/pom.xml .
+RUN mvn -B -q -DskipTests dependency:resolve
 
 COPY backend/src ./src
-RUN ./mvnw -q -DskipTests package
+RUN mvn -B -q -DskipTests package
 
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app

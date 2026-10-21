@@ -1,16 +1,12 @@
-# Build stage
-FROM eclipse-temurin:17-jdk-jammy AS build
+FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
 
-COPY mvnw .
-COPY .mvn .mvn
 COPY pom.xml .
-RUN chmod +x mvnw && ./mvnw -q -DskipTests dependency:go-offline
+RUN mvn -B -q -DskipTests dependency:resolve
 
 COPY src ./src
-RUN ./mvnw -q -DskipTests package
+RUN mvn -B -q -DskipTests package
 
-# Run stage
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
@@ -19,7 +15,5 @@ USER appuser
 
 COPY --from=build /app/target/drippay-backend-*.jar /app/app.jar
 
-# Render sets PORT; Spring reads server.port from PORT or SERVER_PORT (see application.yml)
 EXPOSE 8080
-
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
