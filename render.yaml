@@ -1,0 +1,24 @@
+# Render Blueprint (optional). Adjust plan/region as needed.
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: drippay-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: Dockerfile
+    plan: starter
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: JWT_EXPIRATION_MS
+        value: "86400000"
